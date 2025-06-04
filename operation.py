@@ -203,24 +203,15 @@ def zoomInBilinearInterpolation(image: Image.Image) -> Image.Image:
             p01 = pix[x0, y1]
             p11 = pix[x1, y1]
 
-            if isinstance(p00, int):  # grayscale
-                interp = (
-                    p00 * (1 - dx) * (1 - dy) +
-                    p10 * dx * (1 - dy) +
-                    p01 * (1 - dx) * dy +
-                    p11 * dx * dy
-                )
-                pix_2[i, j] = int(round(interp))
-            else:  # RGB or RGBA
-                interp = tuple(
-                    int(round(
-                        p00[k] * (1 - dx) * (1 - dy) +
-                        p10[k] * dx * (1 - dy) +
-                        p01[k] * (1 - dx) * dy +
-                        p11[k] * dx * dy
-                    )) for k in range(len(p00))
-                )
-                pix_2[i, j] = interp
+            interp = tuple(
+                int(round(
+                    p00[k] * (1 - dx) * (1 - dy) +
+                    p10[k] * dx * (1 - dy) +
+                    p01[k] * (1 - dx) * dy +
+                    p11[k] * dx * dy
+                )) for k in range(len(p00))
+            )
+            pix_2[i, j] = interp
     return image_zoom
 
 def zoomOutBilinearInterpolation(image: Image.Image) -> Image.Image:
@@ -243,14 +234,10 @@ def zoomOutBilinearInterpolation(image: Image.Image) -> Image.Image:
             p01 = pix[x0, y1]
             p11 = pix[x1, y1]
 
-            if isinstance(p00, int):  # grayscale
-                avg = (p00 + p10 + p01 + p11) / 4
-                pix_2[i, j] = int(round(avg))
-            else:  # RGB or RGBA
-                avg = tuple(
-                    int(round((p00[k] + p10[k] + p01[k] + p11[k]) / 4))
-                    for k in range(len(p00))
-                )
-                pix_2[i, j] = avg
+            avg = tuple(
+                int(round((p00[k] + p10[k] + p01[k] + p11[k]) / 4))
+                for k in range(len(p00))
+            )
+            pix_2[i, j] = avg
 
     return image_zoom
