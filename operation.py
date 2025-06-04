@@ -318,54 +318,70 @@ def histogramEqu(image: Image.Image) -> plt:
     axs[1].axis('off')
     return fig
 
-def imageSpecification(image_1 : Image.Image, image_2 : Image.Image) -> plt:
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+
+def imageSpecification(image_1: Image.Image, image_2: Image.Image) -> plt:
     img1 = np.array(image_1.convert("RGB"))
     img2 = np.array(image_2.convert("RGB"))
+    bins = 8
+    bin_size = 256 // bins
 
-    def match_histograms(source, reference):
+    def match_histograms_8bin(source, reference):
         matched = np.zeros_like(source)
-
-        for channel in range(3):  # R=0, G=1, B=2
-            # Flatten
+        for channel in range(3):  # R, G, B
             src = source[:, :, channel].ravel()
             ref = reference[:, :, channel].ravel()
 
-            # Histogram & CDF
-            src_hist = np.bincount(src, minlength=256)
-            ref_hist = np.bincount(ref, minlength=256)
+            # Histogram untuk 8 bin
+            src_hist = np.zeros(bins, dtype=int)
+            ref_hist = np.zeros(bins, dtype=int)
+            for val in src:
+                src_hist[val // bin_size] += 1
+            for val in ref:
+                ref_hist[val // bin_size] += 1
 
-            src_cdf = np.cumsum(src_hist).astype(np.float64)
-            src_cdf /= src_cdf[-1]
+            # Normalisasi dan CDF
+            src_cdf = np.cumsum(src_hist) / len(src)
+            ref_cdf = np.cumsum(ref_hist) / len(ref)
 
-            ref_cdf = np.cumsum(ref_hist).astype(np.float64)
-            ref_cdf /= ref_cdf[-1]
-
-            # Mapping: cari untuk setiap nilai src CDF, nilai pada ref CDF terdekat
-            mapping = np.zeros(256, dtype=np.uint8)
-            for i in range(256):
+            # Mapping dari bin src ke bin ref (berbasis CDF terdekat)
+            mapping = np.zeros(bins, dtype=int)
+            for i in range(bins):
                 diff = np.abs(ref_cdf - src_cdf[i])
                 mapping[i] = np.argmin(diff)
 
+            # Mapping dari nilai asli (0-255) ke nilai baru sesuai bin
+            full_map = np.zeros(256, dtype=np.uint8)
+            for i in range(256):
+                src_bin = i // bin_size
+                ref_bin = mapping[src_bin]
+                # Petakan ke tengah bin tujuan
+                new_val = ref_bin * bin_size + bin_size // 2
+                full_map[i] = np.clip(new_val, 0, 255)
+
             # Terapkan mapping
-            matched[:, :, channel] = mapping[source[:, :, channel]]
-        
+            matched[:, :, channel] = full_map[source[:, :, channel]]
+
         return matched
 
-    # Spesifikasi histogram
-    specified_img = match_histograms(img1, img2)
+    # Lakukan histogram specification 8 bin
+    specified_img = match_histograms_8bin(img1, img2)
 
-    # Visualisasi
+    # Tampilkan
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     axs[0].imshow(img1)
     axs[0].set_title("Image 1 (Source)")
     axs[0].axis('off')
-    
+
     axs[1].imshow(img2)
     axs[1].set_title("Image 2 (Reference)")
     axs[1].axis('off')
-    
+
     axs[2].imshow(specified_img)
-    axs[2].set_title("Result: Histogram Specified")
+    axs[2].set_title("Result: Histogram Specified (8 bins)")
     axs[2].axis('off')
 
     return fig
+
