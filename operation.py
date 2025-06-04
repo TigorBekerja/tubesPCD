@@ -145,3 +145,112 @@ def dilation(image, kernel) -> Image.Image:
             output[i, j] = np.max(region[kernel == 1])
             
     return Image.fromarray(output.astype(np.uint8))
+
+def zoomInNearestNeighbor(image: Image.Image) -> Image.Image :
+    width, height = image.size
+    
+    image_zoom = Image.new(image.mode, (width*2, height*2))
+    pix = image.load()
+    pix_2 = image_zoom.load()
+
+    for i in range(width):
+        for j in range (height):
+            pixel = pix[i, j]
+            pix_2[i*2, j*2] = pixel
+            pix_2[i*2+1, j*2] = pixel
+            pix_2[i*2, j*2+1] = pixel
+            pix_2[i*2+1, j*2+1] = pixel
+    return image_zoom
+
+def zoomOutNearestNeighbor(image: Image.Image) -> Image.Image :
+    width, height = image.size
+    
+    image_zoom = Image.new(image.mode, (width//2, height//2))
+    pix = image.load()
+    pix_2 = image_zoom.load()
+
+    for i in range(width//2):
+        for j in range (height//2):
+            pixel = pix[i*2, j*2]
+            pix_2[i, j] = pixel
+    return image_zoom
+
+def zoomInBilinearInterpolation(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    new_width, new_height = width * 2, height * 2
+
+    image_zoom = Image.new(image.mode, (new_width, new_height))
+    pix = image.load()
+    pix_2 = image_zoom.load()
+
+    for i in range(new_width):
+        for j in range(new_height):
+            # Koordinat (x, y) di gambar asli
+            x = i / 2
+            y = j / 2
+
+            x0 = int(x)
+            y0 = int(y)
+            x1 = min(x0 + 1, width - 1)
+            y1 = min(y0 + 1, height - 1)
+
+            dx = x - x0
+            dy = y - y0
+
+            # Ambil nilai warna dari 4 titik tetangga
+            p00 = pix[x0, y0]
+            p10 = pix[x1, y0]
+            p01 = pix[x0, y1]
+            p11 = pix[x1, y1]
+
+            if isinstance(p00, int):  # grayscale
+                interp = (
+                    p00 * (1 - dx) * (1 - dy) +
+                    p10 * dx * (1 - dy) +
+                    p01 * (1 - dx) * dy +
+                    p11 * dx * dy
+                )
+                pix_2[i, j] = int(round(interp))
+            else:  # RGB or RGBA
+                interp = tuple(
+                    int(round(
+                        p00[k] * (1 - dx) * (1 - dy) +
+                        p10[k] * dx * (1 - dy) +
+                        p01[k] * (1 - dx) * dy +
+                        p11[k] * dx * dy
+                    )) for k in range(len(p00))
+                )
+                pix_2[i, j] = interp
+    return image_zoom
+
+def zoomOutBilinearInterpolation(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    new_width, new_height = width // 2, height // 2
+
+    image_zoom = Image.new(image.mode, (new_width, new_height))
+    pix = image.load()
+    pix_2 = image_zoom.load()
+
+    for i in range(new_width):
+        for j in range(new_height):
+            x0 = i * 2
+            y0 = j * 2
+            x1 = min(x0 + 1, width - 1)
+            y1 = min(y0 + 1, height - 1)
+
+            p00 = pix[x0, y0]
+            p10 = pix[x1, y0]
+            p01 = pix[x0, y1]
+            p11 = pix[x1, y1]
+
+            if isinstance(p00, int):  # grayscale
+                avg = (p00 + p10 + p01 + p11) / 4
+                pix_2[i, j] = int(round(avg))
+            else:  # RGB or RGBA
+                avg = tuple(
+                    int(round((p00[k] + p10[k] + p01[k] + p11[k]) / 4))
+                    for k in range(len(p00))
+                )
+                pix_2[i, j] = avg
+
+    return image_zoom

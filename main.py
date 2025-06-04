@@ -11,6 +11,9 @@ from operation import modify_image_invert
 from operation import edge_detection
 from operation import erode
 from operation import dilation
+from operation import zoomInNearestNeighbor
+from operation import zoomOutNearestNeighbor
+from operation import *
 
 if "default_image" not in st.session_state:
     st.session_state.default_image = Image.open(
@@ -29,10 +32,12 @@ else:
 
 
 edges = cv2.Canny(np.array(image), 100, 200)
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "Original", "Detected edges", "kecerahan", 
     "contrast", "invert image", "Erode",
-    "Dilation", "Opening", "Closing"])
+    "Dilation", "Opening", "Closing",
+    "Nearest Neighbor", "Bilinear Interpolation"
+    ])
 
 last_edge_type = 2  # Default to Sobel
 
@@ -221,3 +226,23 @@ with tab9:
         file_name='closed_image.png',
         mime='image/png'
     )
+
+with tab10:
+    modified_image_1 = zoomOutNearestNeighbor(image.copy())
+    tab10.image(modified_image_1)
+    st.markdown(modified_image_1.copy().size)
+    tab10.image(image)
+    st.markdown(image.copy().size)
+    modified_image_2 = zoomInNearestNeighbor(image.copy())
+    tab10.image(modified_image_2)
+    st.markdown(modified_image_2.copy().size)
+
+with tab11:
+    modified_image_2 = zoomOutBilinearInterpolation(image.copy())
+    tab11.image(modified_image_2)
+    st.markdown(modified_image_2.copy().size)
+    tab11.image(image)
+    st.markdown(image.copy().size)
+    modified_image_1 = zoomInBilinearInterpolation(image.copy())
+    tab11.image(modified_image_1)
+    st.markdown(modified_image_1.copy().size)
