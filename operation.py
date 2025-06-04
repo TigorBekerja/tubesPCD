@@ -1,5 +1,7 @@
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 #ini buat clamping 0-255
 def batasPixel(x):
@@ -241,3 +243,129 @@ def zoomOutBilinearInterpolation(image: Image.Image) -> Image.Image:
             pix_2[i, j] = avg
 
     return image_zoom
+
+def histogramGreen(image: Image.Image) -> plt:
+    img_array = np.array(image)
+    green_channel = img_array[:, :, 1]  # Channel hijau
+    fig, ax = plt.subplots()
+    ax.hist(green_channel.ravel(), bins=256, color='green', alpha=0.7)
+    ax.set_title("Histogram Hijau")
+    ax.set_xlim([0, 255])
+    return fig
+
+def histogramRed(image: Image.Image) -> plt:
+    img_array = np.array(image)
+    red_channel = img_array[:, :, 0]  # Channel merah
+    fig, ax = plt.subplots()
+    ax.hist(red_channel.ravel(), bins=256, color='red', alpha=0.7)
+    ax.set_title("Histogram Merah")
+    ax.set_xlim([0, 255])
+    return fig
+
+def histogramBlue(image: Image.Image) -> plt:
+    img_array = np.array(image)
+    blue_channel = img_array[:, :, 2]  # Channel biru
+    fig, ax = plt.subplots()
+    ax.hist(blue_channel.ravel(), bins=256, color='blue', alpha=0.7)
+    ax.set_title("Histogram Biru")
+    ax.set_xlim([0, 255])
+    return fig
+
+def histogramEqu(image: Image.Image) -> plt:
+    # Konversi ke array numpy
+    img_array = np.array(image)
+    height, width, channels = img_array.shape
+    bins = 8
+    bin_size = 256 // bins
+    
+    # Fungsi untuk equalize satu channel
+    def equalize_channel(channel_data):
+        # Hitung histogram
+        hist = np.zeros(bins, dtype=int)
+        for pixel in channel_data.ravel():
+            bin_idx = pixel // bin_size
+            hist[bin_idx] += 1
+
+        # Hitung CDF
+        cdf = np.cumsum(hist)
+        cdf_normalized = cdf / cdf[-1]  # Normalize 0-1
+
+        # Buat mapping nilai lama ke baru
+        new_values = np.floor(cdf_normalized * 255).astype(np.uint8)
+        mapping = np.zeros(256, dtype=np.uint8)
+        for i in range(256):
+            mapping[i] = new_values[i // bin_size]
+
+        # Terapkan mapping ke channel
+        equalized = mapping[channel_data]
+        return equalized
+
+    # Proses tiap channel RGB
+    R_eq = equalize_channel(img_array[:, :, 0])
+    G_eq = equalize_channel(img_array[:, :, 1])
+    B_eq = equalize_channel(img_array[:, :, 2])
+
+    # Gabungkan kembali
+    equalized_img = np.stack([R_eq, G_eq, B_eq], axis=2)
+
+    # Tampilkan gambar asli dan hasil equalization
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    axs[0].imshow(img_array)
+    axs[0].set_title("Original")
+    axs[0].axis('off')
+    axs[1].imshow(equalized_img)
+    axs[1].set_title("Histogram Equalized (8 bins)")
+    axs[1].axis('off')
+    return fig
+
+def imageSpecification(image_1 : Image.Image, image_2 : Image.Image) -> plt:
+    img1 = np.array(image_1.convert("RGB"))
+    img2 = np.array(image_2.convert("RGB"))
+
+    def match_histograms(source, reference):
+        matched = np.zeros_like(source)
+
+        for channel in range(3):  # R=0, G=1, B=2
+            # Flatten
+            src = source[:, :, channel].ravel()
+            ref = reference[:, :, channel].ravel()
+
+            # Histogram & CDF
+            src_hist = np.bincount(src, minlength=256)
+            ref_hist = np.bincount(ref, minlength=256)
+
+            src_cdf = np.cumsum(src_hist).astype(np.float64)
+            src_cdf /= src_cdf[-1]
+
+            ref_cdf = np.cumsum(ref_hist).astype(np.float64)
+            ref_cdf /= ref_cdf[-1]
+
+            # Mapping: cari untuk setiap nilai src CDF, nilai pada ref CDF terdekat
+            mapping = np.zeros(256, dtype=np.uint8)
+            for i in range(256):
+                diff = np.abs(ref_cdf - src_cdf[i])
+                mapping[i] = np.argmin(diff)
+
+            # Terapkan mapping
+            matched[:, :, channel] = mapping[source[:, :, channel]]
+        
+        return matched
+
+    # Spesifikasi histogram
+    specified_img = match_histograms(img1, img2)
+
+    # Visualisasi
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    axs[0].imshow(img1)
+    axs[0].set_title("Image 1 (Source)")
+    axs[0].axis('off')
+    
+    axs[1].imshow(img2)
+    axs[1].set_title("Image 2 (Reference)")
+    axs[1].axis('off')
+    
+    axs[2].imshow(specified_img)
+    axs[2].set_title("Result: Histogram Specified")
+    axs[2].axis('off')
+
+    return fig

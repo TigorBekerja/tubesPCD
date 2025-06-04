@@ -32,11 +32,11 @@ else:
 
 
 edges = cv2.Canny(np.array(image), 100, 200)
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "Original", "Detected edges", "kecerahan", 
     "contrast", "invert image", "Erode",
     "Dilation", "Opening", "Closing",
-    "Nearest Neighbor", "Bilinear Interpolation"
+    "Nearest Neighbor", "Bilinear Interpolation", "histogram equalization", "Equalization"
     ])
 
 last_edge_type = 2  # Default to Sobel
@@ -246,3 +246,25 @@ with tab11:
     modified_image_1 = zoomInBilinearInterpolation(image.copy())
     tab11.image(modified_image_1)
     st.markdown(modified_image_1.copy().size)
+
+with tab12:
+    st.pyplot(histogramRed(image.copy()))
+    st.pyplot(histogramGreen(image.copy()))
+    st.pyplot(histogramBlue(image.copy()))
+    st.pyplot(histogramEqu(image.copy()))
+
+with tab13:
+    if "target_image" not in st.session_state:
+        st.session_state.target_image = Image.open(
+            requests.get("https://picsum.photos/200/120", stream=True).raw
+        ).convert("RGB")
+
+    target = st.file_uploader("Upload target image", type=["jpg", "jpeg", "png"])
+
+    if target:
+        target_image = Image.open(target)
+        a = image.size
+    else:
+        target_image = st.session_state.target_image.copy()
+
+    st.pyplot(imageSpecification(image.copy(), target_image))
